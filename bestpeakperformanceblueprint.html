@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Blueprint: Peak Rahul</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #0aff68;
+            --text-main: #e0e0e0;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        h1, h2, h3, .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Canvas Background */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* The Road */
+        .road-container {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 1rem;
+        }
+
+        /* The Central Line */
+        .road-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, 
+                transparent, 
+                var(--neon-cyan), 
+                var(--neon-purple), 
+                var(--neon-cyan), 
+                transparent);
+            transform: translateX(-50%);
+            z-index: 0;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            opacity: 0.5;
+        }
+
+        /* Phase Nodes on the Road */
+        .phase-node {
+            position: absolute;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: var(--bg-color);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        /* Timeline Items */
+        .timeline-item {
+            display: flex;
+            justify-content: center; /* Default for mobile */
+            align-items: center;
+            margin-bottom: 8rem;
+            position: relative;
+            opacity: 0; /* Hidden initially for scroll reveal */
+            transform: translateY(50px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .timeline-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .timeline-content {
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Desktop Alternating Layout */
+        @media (min-width: 768px) {
+            .timeline-item:nth-child(odd) {
+                justify-content: flex-start;
+                padding-right: 50%;
+            }
+            .timeline-item:nth-child(even) {
+                justify-content: flex-end;
+                padding-left: 50%;
+            }
+            
+            /* Connector Lines */
+            .timeline-item::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                width: 50px;
+                height: 1px;
+                background: var(--neon-cyan);
+                opacity: 0.5;
+            }
+
+            .timeline-item:nth-child(odd)::after {
+                right: 50%; /* Connect to center from left */
+                transform: translateX(0);
+            }
+            
+            .timeline-item:nth-child(even)::after {
+                left: 50%; /* Connect to center from right */
+                transform: translateX(0);
+            }
+
+            .timeline-item:nth-child(odd) .timeline-content {
+                margin-right: 2rem;
+                text-align: right;
+            }
+            
+            .timeline-item:nth-child(even) .timeline-content {
+                margin-left: 2rem;
+                text-align: left;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-cyan);
+        }
+
+        /* Glitch Effect for Title */
+        .glitch-wrapper {
+            position: relative;
+        }
+        .glitch {
+            position: relative;
+            color: var(--text-main);
+            font-size: 4rem;
+            font-weight: bold;
+            letter-spacing: -2px;
+            text-shadow: 2px 2px var(--neon-purple), -2px -2px var(--neon-cyan);
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+        
+        @keyframes glitch-anim {
+            0% { text-shadow: 2px 2px var(--neon-purple), -2px -2px var(--neon-cyan); }
+            25% { text-shadow: -2px 2px var(--neon-cyan), 2px -2px var(--neon-purple); }
+            50% { text-shadow: 2px -2px var(--neon-purple), -2px 2px var(--neon-cyan); }
+            75% { text-shadow: -2px -2px var(--neon-cyan), 2px 2px var(--neon-purple); }
+            100% { text-shadow: 2px 2px var(--neon-purple), -2px -2px var(--neon-cyan); }
+        }
+
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
+        }
+        .purple-glow {
+            text-shadow: 0 0 10px rgba(188, 19, 254, 0.7);
+        }
+
+        /* Checkbox styling */
+        .cyber-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 1px solid var(--neon-cyan);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        .cyber-checkbox:checked {
+            background: rgba(0, 243, 255, 0.2);
+        }
+        
+        .cyber-checkbox:checked::after {
+            content: '✓';
+            color: var(--neon-cyan);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas for Particle Network -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex flex-col justify-center items-center text-center px-4 relative z-10">
+        <div class="mb-4">
+            <span class="mono text-xs md:text-sm text-cyan-400 tracking-[0.2em] uppercase border border-cyan-900 px-3 py-1 rounded bg-black/50 backdrop-blur">
+                Specially Designed for Rahul
+            </span>
+        </div>
+        <div class="glitch-wrapper mb-6">
+            <h1 class="glitch text-5xl md:text-7xl">THE BLUEPRINT</h1>
+        </div>
+        <p class="text-gray-400 max-w-2xl text-lg md:text-xl mb-12 leading-relaxed">
+            Stop studying. Start building. <br>
+            Engineering the architecture for <span class="text-white font-bold neon-glow">Peak Performance</span>.
+        </p>
+        
+        <div class="animate-bounce mt-12">
+            <i data-lucide="chevron-down" class="w-10 h-10 text-cyan-400 opacity-70"></i>
+        </div>
+    </section>
+
+    <!-- The Road -->
+    <div class="road-container">
+        <!-- Center Line -->
+        <div class="road-line"></div>
+
+        <!-- Phase 1: Foundation -->
+        <div class="timeline-item" id="phase-1">
+            <div class="timeline-content glass-card p-6 md:p-8 rounded-lg border-l-4 border-l-cyan-400">
+                <div class="absolute -right-3 top-6 w-6 h-6 bg-black border border-cyan-400 rounded-full md:hidden"></div>
+                
+                <div class="flex items-center gap-4 mb-4 timeline-header">
+                    <div class="p-3 bg-cyan-900/30 rounded text-cyan-400">
+                        <i data-lucide="map" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="mono text-xs text-gray-500 uppercase tracking-widest">Phase I</span>
+                        <h2 class="text-2xl font-bold text-white">The Foundation</h2>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 mb-6 text-sm leading-relaxed">
+                    You cannot build a skyscraper on a swamp. Before you open a textbook, you must master the terrain. Deconstruct the syllabus and assemble your arsenal.
+                </p>
+
+                <div class="space-y-3">
+                    <div class="flex items-center group">
+                        <input type="checkbox" class="cyber-checkbox" id="p1-1">
+                        <label for="p1-1" class="text-sm text-gray-300 group-hover:text-cyan-400 transition-colors cursor-pointer">Deconstruct Syllabus & Weightage</label>
+                    </div>
+                    <div class="flex items-center group">
+                        <input type="checkbox" class="cyber-checkbox" id="p1-2">
+                        <label for="p1-2" class="text-sm text-gray-300 group-hover:text-cyan-400 transition-colors cursor-pointer">Analyze Examiner Reports</label>
+                    </div>
+                    <div class="flex items-center group">
+                        <input type="checkbox" class="cyber-checkbox" id="p1-3">
+                        <label for="p1-3" class="text-sm text-gray-300 group-hover:text-cyan-400 transition-colors cursor-pointer">Gather Resources (The Toolkit)</label>
+                    </div>
+                </div>
+            </div>
+            <!-- Node for desktop road connection -->
+            <div class="phase-node hidden md:block top-1/2 bg-black border-cyan-400"></div>
+        </div>
+
+        <!-- Phase 2: Knowledge Engine -->
+        <div class="timeline-item" id="phase-2">
+            <div class="phase-node hidden md:block top-1/2 bg-black border-purple-500 shadow-[0_0_10px_#a855f7]"></div>
+            
+            <div class="timeline-content glass-card p-6 md:p-8 rounded-lg border-r-4 border-r-purple-500">
+                <div class="flex items-center gap-4 mb-4 justify-end timeline-header-reverse">
+                    <div class="text-right">
+                        <span class="mono text-xs text-gray-500 uppercase tracking-widest">Phase II</span>
+                        <h2 class="text-2xl font-bold text-white">Knowledge Engine</h2>
+                    </div>
+                    <div class="p-3 bg-purple-900/30 rounded text-purple-400">
+                        <i data-lucide="cpu" class="w-6 h-6"></i>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 mb-6 text-sm leading-relaxed">
+                    Passive reading is an illusion of competence. Switch to Active Recall. Install the 2-3-5-7 Spaced Repetition protocol to hack the forgetting curve.
+                </p>
+
+                <div class="bg-black/40 p-4 rounded border border-gray-800 mb-4">
+                    <h3 class="text-purple-400 text-xs mono mb-2 uppercase">Active Protocols</h3>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-gray-900 p-2 rounded text-xs text-gray-300 border border-gray-800">Feynman Technique</div>
+                        <div class="bg-gray-900 p-2 rounded text-xs text-gray-300 border border-gray-800">SQ3R Method</div>
+                        <div class="col-span-2 bg-gray-900 p-2 rounded text-xs text-gray-300 border border-gray-800">Flashcards (Anki)</div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-gray-500 mono border-t border-gray-800 pt-3">
+                    <span>Review Cadence:</span>
+                    <div class="flex gap-2">
+                        <span class="px-2 py-1 bg-purple-900/20 rounded text-purple-300">Day 2</span>
+                        <span class="px-2 py-1 bg-purple-900/20 rounded text-purple-300">Day 9</span>
+                        <span class="px-2 py-1 bg-purple-900/20 rounded text-purple-300">Day 19</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3: Architecture -->
+        <div class="timeline-item" id="phase-3">
+            <div class="timeline-content glass-card p-6 md:p-8 rounded-lg border-l-4 border-l-cyan-400">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="p-3 bg-cyan-900/30 rounded text-cyan-400">
+                        <i data-lucide="layout-grid" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="mono text-xs text-gray-500 uppercase tracking-widest">Phase III</span>
+                        <h2 class="text-2xl font-bold text-white">System Architecture</h2>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 mb-6 text-sm leading-relaxed">
+                    Motivation is unreliable; systems are consistent. Time-block your day. Define SMART goals. Eliminate decision fatigue.
+                </p>
+
+                <div class="space-y-4">
+                    <div class="relative">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>Time Blocking Adherence</span>
+                            <span>92% Target</span>
+                        </div>
+                        <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-cyan-500 w-3/4 animate-pulse"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-gray-900/50 rounded border border-gray-800">
+                        <h4 class="text-cyan-400 text-xs font-bold mb-1">SMART GOAL SYNTAX:</h4>
+                        <p class="text-xs text-gray-400 italic">"Complete 20 Physics MCQs [Specific] in 45 mins [Time-bound] scoring >85% [Measurable]."</p>
+                    </div>
+                </div>
+            </div>
+            <div class="phase-node hidden md:block top-1/2 bg-black border-cyan-400"></div>
+        </div>
+
+        <!-- Phase 4: Stress Testing -->
+        <div class="timeline-item" id="phase-4">
+            <div class="phase-node hidden md:block top-1/2 bg-black border-red-500 shadow-[0_0_10px_#ef4444]"></div>
+            
+            <div class="timeline-content glass-card p-6 md:p-8 rounded-lg border-r-4 border-r-red-500">
+                <div class="flex items-center gap-4 mb-4 justify-end timeline-header-reverse">
+                    <div class="text-right">
+                        <span class="mono text-xs text-gray-500 uppercase tracking-widest">Phase IV</span>
+                        <h2 class="text-2xl font-bold text-white">Stress Testing</h2>
+                    </div>
+                    <div class="p-3 bg-red-900/30 rounded text-red-400">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 mb-6 text-sm leading-relaxed">
+                    Simulate the pressure. Practice does not make perfect; perfect practice makes perfect. Analyze every failure.
+                </p>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button class="py-2 px-3 border border-red-500/30 rounded bg-red-900/10 text-xs text-red-200 hover:bg-red-900/30 transition-colors">
+                        Simulate Exam
+                    </button>
+                    <button class="py-2 px-3 border border-gray-700 rounded bg-black/30 text-xs text-gray-300 hover:bg-gray-800 transition-colors">
+                        Mistake Log
+                    </button>
+                </div>
+
+                <div class="text-xs text-gray-500 mono">
+                    <p class="mb-1 text-red-400 uppercase font-bold">Error Taxonomy:</p>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>Conceptual Gaps</li>
+                        <li>Silly Mistakes (Focus)</li>
+                        <li>Time Management</li>
+                        <li>Perfection Traps</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 5: Maintenance -->
+        <div class="timeline-item" id="phase-5">
+            <div class="timeline-content glass-card p-6 md:p-8 rounded-lg border-l-4 border-l-green-400">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="p-3 bg-green-900/30 rounded text-green-400">
+                        <i data-lucide="activity" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="mono text-xs text-gray-500 uppercase tracking-widest">Phase V</span>
+                        <h2 class="text-2xl font-bold text-white">System Maintenance</h2>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 mb-6 text-sm leading-relaxed">
+                    Burnout is a strategic failure. Sleep, nutrition, and exercise are not rewards; they are structural requirements for the engine.
+                </p>
+
+                <div class="flex justify-between gap-4">
+                    <div class="text-center flex-1 p-2 bg-gray-900/50 rounded border border-gray-800">
+                        <i data-lucide="moon" class="w-5 h-5 text-purple-400 mx-auto mb-1"></i>
+                        <span class="block text-xs text-gray-300">7-9h Sleep</span>
+                    </div>
+                    <div class="text-center flex-1 p-2 bg-gray-900/50 rounded border border-gray-800">
+                        <i data-lucide="zap" class="w-5 h-5 text-yellow-400 mx-auto mb-1"></i>
+                        <span class="block text-xs text-gray-300">Nutrients</span>
+                    </div>
+                    <div class="text-center flex-1 p-2 bg-gray-900/50 rounded border border-gray-800">
+                        <i data-lucide="heart" class="w-5 h-5 text-green-400 mx-auto mb-1"></i>
+                        <span class="block text-xs text-gray-300">20m Cardio</span>
+                    </div>
+                </div>
+            </div>
+            <div class="phase-node hidden md:block top-1/2 bg-black border-green-400"></div>
+        </div>
+    </div>
+
+    <!-- Final Destination -->
+    <section class="min-h-[60vh] flex flex-col items-center justify-center relative pb-20">
+        <div class="glass-card p-8 md:p-12 rounded-xl border border-cyan-500/50 shadow-[0_0_50px_rgba(0,243,255,0.1)] text-center max-w-2xl mx-4 relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-r from-cyan-900/20 to-purple-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
+            <i data-lucide="award" class="w-16 h-16 text-cyan-400 mx-auto mb-6"></i>
+            <h2 class="text-4xl md:text-5xl font-bold text-white mb-2 neon-glow">PEAK RAHUL</h2>
+            <div class="h-1 w-24 bg-gradient-to-r from-cyan-400 to-purple-500 mx-auto mb-6"></div>
+            
+            <p class="text-gray-300 mb-8">
+                System Optimized. Architecture Complete.<br>
+                The road is paved. The engine is built. <br>
+                <span class="text-white font-bold">Execute.</span>
+            </p>
+
+            <button class="bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-3 px-8 rounded shadow-[0_0_20px_rgba(0,243,255,0.4)] transition-all transform hover:scale-105 mono uppercase tracking-wider">
+                Access Dashboard
+            </button>
+        </div>
+        
+        <footer class="mt-20 text-gray-600 text-xs mono">
+            SYSTEM_ID: BLUEPRINT_V1.0 // ARCHITECT: WEBSIM_BUILDER
+        </footer>
+    </section>
+
+    <script>
+        // --- 1. ICON INITIALIZATION ---
+        lucide.createIcons();
+
+        // --- 2. PARTICLE NETWORK SYSTEM (CANVAS) ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        
+        // Configuration
+        const particleCount = 60; // Number of nodes
+        const connectionDistance = 150; // Max distance to draw line
+        const particleSpeed = 0.3; 
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * particleSpeed;
+                this.vy = (Math.random() - 0.5) * particleSpeed;
+                this.size = Math.random() * 2 + 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(100, 116, 139, 0.5)'; // Slate-500 with opacity
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                const p1 = particles[i];
+                p1.update();
+                p1.draw();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < connectionDistance) {
+                        ctx.beginPath();
+                        // Opacity based on distance
+                        const opacity = 1 - (distance / connectionDistance);
+                        ctx.strokeStyle = `rgba(0, 243, 255, ${opacity * 0.15})`; // Neon Cyan trace
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        // Init Canvas
+        window.addEventListener('resize', () => {
+            resize();
+            initParticles();
+        });
+        resize();
+        initParticles();
+        animateParticles();
+
+
+        // --- 3. SCROLL INTERSECTION OBSERVER (REVEAL ON SCROLL) ---
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.2 // Trigger when 20% visible
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            observer.observe(item);
+        });
+
+        // --- 4. ADJUST TIMELINE FOR MOBILE ---
+        // Simple logic to ensure text alignment looks good on small screens
+        function adjustLayout() {
+            const isMobile = window.innerWidth < 768;
+            const items = document.querySelectorAll('.timeline-item .timeline-content');
+            const headers = document.querySelectorAll('.timeline-header-reverse');
+            
+            if (isMobile) {
+                headers.forEach(header => {
+                    // Flip the header flex direction on mobile so icon is left
+                    header.classList.remove('justify-end');
+                    header.classList.add('flex-row-reverse', 'justify-end'); 
+                    // Actually, simpler: Just ensure all text is left aligned on mobile
+                    // CSS media queries handle most, this is for edge cases if needed.
+                });
+            } else {
+                headers.forEach(header => {
+                    header.classList.remove('flex-row-reverse');
+                    header.classList.add('justify-end');
+                });
+            }
+        }
+        window.addEventListener('resize', adjustLayout);
+        adjustLayout();
+
+    </script>
+</body>
+</html>
